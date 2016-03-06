@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0",
+  "summary": "",
+  "repository": "https://github.com/mg50/logistic-regression.git",
+  "license": "MIT",
+  "source-directories": [
+    "elm/"
+  ],
+  "exposed-modules": [],
+  "dependencies": {
+    "elm-lang/core": "3.0.0 <= v < 4.0.0"
+
+  },
+  "elm-version": "0.16.10 <= v < 0.17.0"
+}
