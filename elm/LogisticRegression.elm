@@ -62,7 +62,7 @@ hessian observations weights =
 
     matrix = L.foldl (::+::) zeroMatrix (L.map toOuter observations)
   in
-    D.log (toString matrix) <| (1 / m) .*:: matrix
+    D.log (toString matrix) <| matrix
 
 -- gradientDescent : List Observation -> Weights
 -- gradientDescent obs =
@@ -98,10 +98,11 @@ gradientDescentStep obs weights = learningRate .*: gradient obs weights
 gradient : List Observation -> Weights -> Vector
 gradient obs weights =
   let
+    m = toFloat (L.length obs)
     go {input, output} = (responseToFloat output - sigmoid input weights) .*: input
     zeroVector = L.repeat (dimensionOfData obs) 0
   in
-    L.foldr (:+:) zeroVector <| L.map go obs
+    (L.foldr (:+:) zeroVector <| L.map go obs)
 
 sigmoid : Vector -> Weights -> Float
 sigmoid v weights =
