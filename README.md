@@ -7,7 +7,3 @@ http://markgrant.io:9002
 # Controls
 
 Click around to make blue dots, and shift click to make green dots. Dots can be dragged around with the mouse.
-
-# Future directions
-
-Try using Newton-Raphson instead of gradient ascent.

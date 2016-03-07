@@ -1,6 +1,8 @@
 module LogisticRegression where
 import List as L
 import Debug as D
+import LinearAlgebra exposing (..)
+import Numeric exposing (Matrix)
 
 type alias Vector = List Float
 type alias Weights = List Float
@@ -9,39 +11,83 @@ type Response = Zero | One
 
 type alias Observation = {input : Vector, output : Response}
 
-test =
-  let
-    obs = [ Observation [0,0] Zero
-          , Observation [1,1] One
-          , Observation [2, 2] One
-          ]
-  in
-    gradientDescent obs
-
-gradientDescent : List Observation -> Weights
-gradientDescent obs =
+newtonRaphson : List Observation -> Weights
+newtonRaphson obs =
   let
     padObservation obs = { obs | input = 1 :: obs.input }
     paddedObservations = L.map padObservation obs
     n = dimensionOfData obs + 1
     initialWeights = L.repeat n 0
     go iterations obs weights =
-      let
-        step = gradientDescentStep obs weights
-        stepSize = step :*: step
-        weights' = weights :+: step
-      in
-        if iterations >= maxIterations then
-          weights'
-        else if stepSize <= threshold ^ 2 then
-          weights'
-        else
-          go (iterations + 1) obs weights'
+      case newtonStep obs weights of
+        Nothing -> weights
+        Just step ->
+          let
+            stepSize = step :*: step
+            weights' = weights :-: step
+          in
+            if iterations >= maxIterations then
+              weights'
+            else if stepSize <= threshold ^ 2 then
+              weights'
+            else
+              go (iterations + 1) obs weights'
   in
     go 0 paddedObservations initialWeights
 
+newtonStep : List Observation -> Weights -> Maybe Weights
+newtonStep obs weights =
+  let
+    grad = gradient obs weights
+    hess = hessian obs weights
+  in
+    case inverse hess of
+      Nothing -> Nothing
+      Just inv -> Just (inv ::*: grad)
+
+
+hessian : List Observation -> Weights -> Matrix
+hessian observations weights =
+  let
+    m = toFloat (L.length observations)
+    d = dimensionOfData observations
+    zeroMatrix = L.repeat d (L.repeat d 0)
+
+    toOuter {input} =
+      let
+        s = sigmoid weights input
+        outer = transpose [input] ::*:: [input]
+      in
+        (s * (1 - s)) .*:: outer
+
+    matrix = L.foldl (::+::) zeroMatrix (L.map toOuter observations)
+  in
+    D.log (toString matrix) <| (1 / m) .*:: matrix
+
+-- gradientDescent : List Observation -> Weights
+-- gradientDescent obs =
+--   let
+--     padObservation obs = { obs | input = 1 :: obs.input }
+--     paddedObservations = L.map padObservation obs
+--     n = dimensionOfData obs + 1
+--     initialWeights = L.repeat n 0
+--     go iterations obs weights =
+--       let
+--         step = gradientDescentStep obs weights
+--         stepSize = step :*: step
+--         weights' = weights :+: step
+--       in
+--         if iterations >= maxIterations then
+--           weights'
+--         else if stepSize <= threshold ^ 2 then
+--           weights'
+--         else
+--           go (iterations + 1) obs weights'
+--   in
+--     go 0 paddedObservations initialWeights
+
 maxIterations : Int
-maxIterations = 10000
+maxIterations = 1000
 
 threshold : Float
 threshold = 1
@@ -79,17 +125,3 @@ dimensionOfData obs =
   case obs of
     {input,output}::_ -> L.length input
     _ -> 0
-
-dotProduct  v1 v2 = sum
-
-infixl 8 .*:
-(.*:) : Float -> Vector -> Vector
-(.*:) s v = L.map (\x -> x*s) v
-
-infixl 7 :*:
-(:*:) : Vector -> Vector -> Float
-(:*:) v1 v2 = L.foldr (+) 0 <| L.map2 (*) v1 v2
-
-infixl 6 :+:
-(:+:) : Vector -> Vector -> Vector
-(:+:) v1 v2 = L.map2 (+) v1 v2
