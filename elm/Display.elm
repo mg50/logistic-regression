@@ -35,18 +35,16 @@ lrBoundary w h points =
       LR.Observation (U.locToVect location) (toResponse class)
     observations = L.map toObservation points
     results = LR.newtonRaphson observations -- LR.gradientDescent observations
---    _ = Debug.log (toString results ++ " " ++ (toString points)) 0
+    _ = Debug.log (toString results ++ " " ++ (toString points)) 0
   in
     case results of
-      (w0::w1::w2::[]) -> [drawLine w h w0 w1 w2]
+      Just (w0::w1::w2::[]) -> [drawLine w h w0 w1 w2]
       _ -> []
 
 drawLine w h w0 w1 w2 =
   let
     y x = -(w0 + w1*x) / w2
---    blah = Debug.log (toString (-w, y -w, w, y w, y 0)) 1
   in
---    traced (dashed black) <| segment (-100, -100) (100, 100)
     traced (dashed black) <| segment (-w, y -w) (w, y w)
 
 

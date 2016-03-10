@@ -2,6 +2,15 @@ module LinearAlgebra (..) where
 import List as L
 import Numeric exposing (Vector, Matrix)
 
+diagonalize : List Float -> Matrix
+diagonalize xs =
+  let
+    len = L.length xs
+    pad n = L.repeat n 0
+    makeRow x i = pad i ++ [x] ++ pad (len - i - 1)
+  in
+    L.map2 makeRow xs [0..len]
+
 transpose : Matrix -> Matrix
 transpose = Numeric.transpose
 

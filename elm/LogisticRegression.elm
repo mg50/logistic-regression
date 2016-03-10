@@ -1,6 +1,5 @@
 module LogisticRegression where
 import List as L
-import Debug as D
 import LinearAlgebra exposing (..)
 import Numeric exposing (Matrix)
 
@@ -11,7 +10,7 @@ type Response = Zero | One
 
 type alias Observation = {input : Vector, output : Response}
 
-newtonRaphson : List Observation -> Weights
+newtonRaphson : List Observation -> Maybe Weights
 newtonRaphson obs =
   let
     padObservation obs = { obs | input = 1 :: obs.input }
@@ -20,16 +19,16 @@ newtonRaphson obs =
     initialWeights = L.repeat n 0
     go iterations obs weights =
       case newtonStep obs weights of
-        Nothing -> weights
+        Nothing -> Just weights
         Just step ->
           let
             stepSize = step :*: step
             weights' = weights :-: step
           in
-            if iterations >= maxIterations then
-              weights'
+            if iterations > maxIterations then
+              Nothing
             else if stepSize <= threshold ^ 2 then
-              weights'
+              Just weights'
             else
               go (iterations + 1) obs weights'
   in
@@ -48,49 +47,22 @@ newtonStep obs weights =
 
 hessian : List Observation -> Weights -> Matrix
 hessian observations weights =
-  let
-    m = toFloat (L.length observations)
-    d = dimensionOfData observations
-    zeroMatrix = L.repeat d (L.repeat d 0)
-
-    toOuter {input} =
-      let
-        s = sigmoid weights input
-        outer = transpose [input] ::*:: [input]
-      in
-        (s * (1 - s)) .*:: outer
-
-    matrix = L.foldl (::+::) zeroMatrix (L.map toOuter observations)
-  in
-    D.log (toString matrix) <| matrix
-
--- gradientDescent : List Observation -> Weights
--- gradientDescent obs =
---   let
---     padObservation obs = { obs | input = 1 :: obs.input }
---     paddedObservations = L.map padObservation obs
---     n = dimensionOfData obs + 1
---     initialWeights = L.repeat n 0
---     go iterations obs weights =
---       let
---         step = gradientDescentStep obs weights
---         stepSize = step :*: step
---         weights' = weights :+: step
---       in
---         if iterations >= maxIterations then
---           weights'
---         else if stepSize <= threshold ^ 2 then
---           weights'
---         else
---           go (iterations + 1) obs weights'
---   in
---     go 0 paddedObservations initialWeights
+  if L.length observations == 0 then
+    [[]]
+  else
+    let
+      designMatrix = L.map .input observations
+      diagMatrix = designMatrix |> L.map (sigmoid weights)
+                                |> L.map (\a -> a * (1 - a))
+                                |> diagonalize
+    in
+      (transpose designMatrix) ::*:: diagMatrix ::*:: designMatrix
 
 maxIterations : Int
 maxIterations = 1000
 
 threshold : Float
-threshold = 1
+threshold = 0.01
 
 gradientDescentStep : List Observation -> Weights -> Weights
 gradientDescentStep obs weights = learningRate .*: gradient obs weights
@@ -99,13 +71,13 @@ gradient : List Observation -> Weights -> Vector
 gradient obs weights =
   let
     m = toFloat (L.length obs)
-    go {input, output} = (responseToFloat output - sigmoid input weights) .*: input
+    go {input, output} = (responseToFloat output - sigmoid weights input) .*: input
     zeroVector = L.repeat (dimensionOfData obs) 0
   in
     (L.foldr (:+:) zeroVector <| L.map go obs)
 
-sigmoid : Vector -> Weights -> Float
-sigmoid v weights =
+sigmoid : Weights -> Vector -> Float
+sigmoid weights v =
   let
     dotProduct = v :*: weights
   in
